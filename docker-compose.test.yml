@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # MongoDB para testes
+  mongodb-test:
+    image: mongo:latest
+    container_name: mongodb-test
+    ports:
+      - "27018:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=test_auction_db
+    volumes:
+      - mongo-test-data:/data/db
+    networks:
+      - testNetwork
+
+  # Serviço para executar todos os testes
+  test-all:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    environment:
+      - MONGODB_URI=mongodb://mongodb-test:27017
+      - MONGODB_DATABASE=test_auction_db
+      - AUCTION_INTERVAL=30s
+      - AUCTION_CHECK_INTERVAL=5s
+      - AUCTION_CONTEXT_TIMEOUT=10s
+      - GIN_MODE=test
+    command: sh -c "go test ./... -v -cover"
+    networks:
+      - testNetwork
+    depends_on:
+      - mongodb-test
+
+  # Serviço para executar testes específicos do auction
+  test-auction:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    environment:
+      - MONGODB_URI=mongodb://mongodb-test:27017
+      - MONGODB_DATABASE=test_auction_db
+      - AUCTION_INTERVAL=30s
+      - AUCTION_CHECK_INTERVAL=5s
+      - AUCTION_CONTEXT_TIMEOUT=10s
+      - GIN_MODE=test
+    command: sh -c "go test ./internal/infra/database/auction/ -v -cover"
+    networks:
+      - testNetwork
+    depends_on:
+      - mongodb-test
+
+  # Serviço para executar testes de integração
+  test-integration:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    environment:
+      - MONGODB_URI=mongodb://mongodb-test:27017
+      - MONGODB_DATABASE=test_auction_db
+      - AUCTION_INTERVAL=30s
+      - AUCTION_CHECK_INTERVAL=5s
+      - AUCTION_CONTEXT_TIMEOUT=10s
+      - GIN_MODE=test
+    command: sh -c "go test ./... -v -cover -tags=integration"
+    networks:
+      - testNetwork
+    depends_on:
+      - mongodb-test
+
+volumes:
+  mongo-test-data:
+    driver: local
+
+networks:
+  testNetwork:
+    driver: bridge

@@ -7,11 +7,18 @@ services:
       context: .
     ports:
       - "8080:8080"
-    env_file:
-      - cmd/auction/.env
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DATABASE=auction_db
+      - AUCTION_INTERVAL=2m
+      - AUCTION_CHECK_INTERVAL=10s
+      - AUCTION_CONTEXT_TIMEOUT=30s
+      - GIN_MODE=debug
     command: sh -c "/auction"
     networks:
       - localNetwork
+    depends_on:
+      - mongodb
 
   mongodb:
     image: mongo:latest
@@ -24,6 +31,26 @@ services:
       - mongo-data:/data/db
     networks:
       - localNetwork
+
+  # Serviço para executar testes
+  test:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+      - MONGODB_DATABASE=test_auction_db
+      - AUCTION_INTERVAL=30s
+      - AUCTION_CHECK_INTERVAL=5s
+      - AUCTION_CONTEXT_TIMEOUT=10s
+      - GIN_MODE=test
+    command: sh -c "go test ./... -v -cover"
+    networks:
+      - localNetwork
+    depends_on:
+      - mongodb
+    profiles:
+      - test
 
 volumes:
   mongo-data:
