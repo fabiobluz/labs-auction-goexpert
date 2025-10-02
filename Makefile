@@ -46,6 +46,12 @@ docker-test-auction: ## Executa testes do auction com Docker Compose
 docker-test-integration: ## Executa testes de integração com Docker Compose
 	$(DOCKER_COMPOSE_TEST) up --build test-integration
 
+docker-test-auto-close: ## Executa testes de fechamento automático com Docker Compose
+	$(DOCKER_COMPOSE_TEST) up --build test-auto-close
+
+docker-test-performance: ## Executa testes de performance com Docker Compose
+	$(DOCKER_COMPOSE_TEST) up --build test-performance
+
 # Comandos de limpeza
 clean: ## Limpa arquivos temporários
 	go clean

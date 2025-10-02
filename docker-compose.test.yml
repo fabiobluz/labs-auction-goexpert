@@ -13,6 +13,12 @@ services:
       - mongo-test-data:/data/db
     networks:
       - testNetwork
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Serviço para executar todos os testes
   test-all:
@@ -20,8 +26,8 @@ services:
       dockerfile: Dockerfile
       context: .
     environment:
-      - MONGODB_URI=mongodb://mongodb-test:27017
-      - MONGODB_DATABASE=test_auction_db
+      - MONGODB_URL=mongodb://mongodb-test:27017
+      - MONGODB_DB=test_auction_db
       - AUCTION_INTERVAL=30s
       - AUCTION_CHECK_INTERVAL=5s
       - AUCTION_CONTEXT_TIMEOUT=10s
@@ -30,7 +36,8 @@ services:
     networks:
       - testNetwork
     depends_on:
-      - mongodb-test
+      mongodb-test:
+        condition: service_healthy
 
   # Serviço para executar testes específicos do auction
   test-auction:
@@ -38,8 +45,8 @@ services:
       dockerfile: Dockerfile
       context: .
     environment:
-      - MONGODB_URI=mongodb://mongodb-test:27017
-      - MONGODB_DATABASE=test_auction_db
+      - MONGODB_URL=mongodb://mongodb-test:27017
+      - MONGODB_DB=test_auction_db
       - AUCTION_INTERVAL=30s
       - AUCTION_CHECK_INTERVAL=5s
       - AUCTION_CONTEXT_TIMEOUT=10s
@@ -48,7 +55,8 @@ services:
     networks:
       - testNetwork
     depends_on:
-      - mongodb-test
+      mongodb-test:
+        condition: service_healthy
 
   # Serviço para executar testes de integração
   test-integration:
@@ -56,8 +64,8 @@ services:
       dockerfile: Dockerfile
       context: .
     environment:
-      - MONGODB_URI=mongodb://mongodb-test:27017
-      - MONGODB_DATABASE=test_auction_db
+      - MONGODB_URL=mongodb://mongodb-test:27017
+      - MONGODB_DB=test_auction_db
       - AUCTION_INTERVAL=30s
       - AUCTION_CHECK_INTERVAL=5s
       - AUCTION_CONTEXT_TIMEOUT=10s
@@ -66,7 +74,46 @@ services:
     networks:
       - testNetwork
     depends_on:
-      - mongodb-test
+      mongodb-test:
+        condition: service_healthy
+
+  # Serviço para executar testes de fechamento automático
+  test-auto-close:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    environment:
+      - MONGODB_URL=mongodb://mongodb-test:27017
+      - MONGODB_DB=test_auction_db
+      - AUCTION_INTERVAL=2s
+      - AUCTION_CHECK_INTERVAL=1s
+      - AUCTION_CONTEXT_TIMEOUT=10s
+      - GIN_MODE=test
+    command: sh -c "go test ./internal/infra/database/auction/ -v -run TestAutoClose -cover"
+    networks:
+      - testNetwork
+    depends_on:
+      mongodb-test:
+        condition: service_healthy
+
+  # Serviço para executar testes de performance
+  test-performance:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    environment:
+      - MONGODB_URL=mongodb://mongodb-test:27017
+      - MONGODB_DB=test_auction_db
+      - AUCTION_INTERVAL=1s
+      - AUCTION_CHECK_INTERVAL=500ms
+      - AUCTION_CONTEXT_TIMEOUT=5s
+      - GIN_MODE=test
+    command: sh -c "go test ./internal/infra/database/auction/ -v -run TestConcurrent -cover"
+    networks:
+      - testNetwork
+    depends_on:
+      mongodb-test:
+        condition: service_healthy
 
 volumes:
   mongo-test-data:
