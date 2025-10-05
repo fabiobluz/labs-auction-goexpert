@@ -64,36 +64,6 @@ docker-compose -f docker-compose.test.yml up --build test-auto-close
 docker-compose -f docker-compose.test.yml up --build test-performance
 ```
 
-### Usando Scripts
-
-#### PowerShell (Windows)
-```powershell
-# Todos os testes
-.\scripts\test-docker.ps1 all
-
-# Testes específicos
-.\scripts\test-docker.ps1 auction
-.\scripts\test-docker.ps1 auto-close
-.\scripts\test-docker.ps1 performance
-
-# Com limpeza
-.\scripts\test-docker.ps1 all -Clean
-```
-
-#### Bash (Linux/Mac)
-```bash
-# Todos os testes
-./scripts/test-docker.sh all
-
-# Testes específicos
-./scripts/test-docker.sh auction
-./scripts/test-docker.sh auto-close
-./scripts/test-docker.sh performance
-
-# Com limpeza
-./scripts/test-docker.sh all --clean
-```
-
 ## Configuração
 
 ### Variáveis de Ambiente
@@ -105,16 +75,16 @@ environment:
   - MONGODB_URL=mongodb://mongodb-test:27017
   - MONGODB_DB=test_auction_db
   - AUCTION_INTERVAL=2s
-  - AUCTION_CHECK_INTERVAL=1s
-  - AUCTION_CONTEXT_TIMEOUT=10s
+  - BATCH_INSERT_INTERVAL=1s
+  - MAX_BATCH_SIZE=4
   - GIN_MODE=test
 ```
 
 ### Configuração de Testes
 
 - **AUCTION_INTERVAL**: Intervalo de fechamento automático (padrão: 2s para testes)
-- **AUCTION_CHECK_INTERVAL**: Intervalo de verificação (padrão: 1s para testes)
-- **AUCTION_CONTEXT_TIMEOUT**: Timeout para operações (padrão: 10s para testes)
+- **BATCH_INSERT_INTERVAL**: Intervalo para inserção de lances em lote (padrão: 1s para testes)
+- **MAX_BATCH_SIZE**: Tamanho máximo do lote de lances (padrão: 4 para testes)
 
 ## Tipos de Testes
 

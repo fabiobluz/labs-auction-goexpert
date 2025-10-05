@@ -23,13 +23,11 @@ type AuctionEntityMongo struct {
 }
 type AuctionRepository struct {
 	Collection      *mongo.Collection
-	auctionInterval time.Duration
 }
 
 func NewAuctionRepository(database *mongo.Database) *AuctionRepository {
 	return &AuctionRepository{
 		Collection:      database.Collection("auctions"),
-		auctionInterval: getAuctionInterval(),
 	}
 }
 

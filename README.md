@@ -10,6 +10,12 @@ Este projeto implementa um sistema de leilões em Go com funcionalidade de fecha
 - ✅ Validação de leilões fechados para novos lances
 - ✅ API REST para gerenciamento
 
+## 📚 Documentação
+
+- [Guia de Testes](docs/TESTING.md) - Como executar testes locais e com Docker
+- [Testes Docker](docs/DOCKER_TESTING.md) - Detalhes sobre testes com Docker Compose
+- [Resumo da Implementação](docs/IMPLEMENTATION_SUMMARY.md) - Detalhes técnicos da implementação
+
 ## Arquitetura
 
 O projeto segue os princípios de Clean Architecture:
@@ -31,18 +37,18 @@ configuration/                  # Configurações (logger, database, etc.)
 
 A funcionalidade de fechamento automático foi implementada no arquivo `internal/infra/database/auction/create_auction.go` com as seguintes características:
 
-1. **Goroutine de Monitoramento**: Uma goroutine que executa a cada 10 segundos verificando leilões expirados
+1. **Timer Automático**: Usa goroutine com timer para fechar leilões após o tempo configurado
 2. **Controle de Tempo**: Utiliza variáveis de ambiente para configurar o tempo de duração dos leilões
-3. **Thread Safety**: Implementa mutex para controle de concorrência
+3. **Inserção em Lote**: Sistema de batch insert para lances, otimizando performance
 4. **Logging**: Registra automaticamente quando leilões são fechados
 
 ### Variáveis de Ambiente
 
 - `AUCTION_INTERVAL`: Duração do leilão (ex: "2m", "30s", "1h")
-- `AUCTION_CHECK_INTERVAL`: Intervalo de verificação de leilões expirados (ex: "10s", "30s", "1m")
-- `AUCTION_CONTEXT_TIMEOUT`: Timeout para operações de contexto (ex: "30s", "1m", "2m")
 - `MONGODB_URI`: URI de conexão com MongoDB
 - `MONGODB_DATABASE`: Nome do banco de dados
+- `BATCH_INSERT_INTERVAL`: Intervalo para inserção de lances em lote (ex: "3s", "5s", "1m")
+- `MAX_BATCH_SIZE`: Tamanho máximo do lote de lances (ex: 5, 10, 20)
 
 ## Como Executar
 
@@ -81,8 +87,8 @@ go mod download
 export MONGODB_URI=mongodb://localhost:27017
 export MONGODB_DATABASE=auction_db
 export AUCTION_INTERVAL=2m
-export AUCTION_CHECK_INTERVAL=10s
-export AUCTION_CONTEXT_TIMEOUT=30s
+export BATCH_INSERT_INTERVAL=3m
+export MAX_BATCH_SIZE=5
 export GIN_MODE=debug
 ```
 
@@ -149,15 +155,6 @@ curl http://localhost:8080/auction/{auction_id}
 
 ## Configuração Avançada
 
-### Personalizar Intervalo de Verificação
-
-Para alterar a frequência de verificação de leilões expirados, modifique o valor no código:
-
-```go
-// Em startAutoCloseRoutine()
-ticker := time.NewTicker(time.Second * 10) // Altere este valor
-```
-
 ### Configurações de Ambiente
 
 Crie um arquivo `.env` na pasta `cmd/auction/`:
@@ -166,6 +163,8 @@ Crie um arquivo `.env` na pasta `cmd/auction/`:
 MONGODB_URI=mongodb://mongodb:27017
 MONGODB_DATABASE=auction_db
 AUCTION_INTERVAL=2m
+BATCH_INSERT_INTERVAL=3m
+MAX_BATCH_SIZE=5
 GIN_MODE=debug
 ```
 
@@ -199,9 +198,9 @@ Para verificar se a goroutine está funcionando, monitore os logs da aplicação
 
 ### Performance
 
-- A goroutine verifica leilões a cada 10 segundos
-- Para sistemas com muitos leilões, considere ajustar este intervalo
-- O sistema usa mutex para thread safety
+- O sistema usa timers individuais para cada leilão
+- Lances são inseridos em lote para otimizar performance
+- Ajuste `BATCH_INSERT_INTERVAL` e `MAX_BATCH_SIZE` conforme necessário
 
 ## Estrutura do Código
 

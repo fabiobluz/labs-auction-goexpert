@@ -11,8 +11,8 @@ services:
       - MONGODB_URI=mongodb://mongodb:27017
       - MONGODB_DATABASE=auction_db
       - AUCTION_INTERVAL=2m
-      - AUCTION_CHECK_INTERVAL=10s
-      - AUCTION_CONTEXT_TIMEOUT=30s
+      - BATCH_INSERT_INTERVAL=3m
+      - MAX_BATCH_SIZE=5
       - GIN_MODE=debug
     command: sh -c "/auction"
     networks:
@@ -41,8 +41,8 @@ services:
       - MONGODB_URI=mongodb://mongodb:27017
       - MONGODB_DATABASE=test_auction_db
       - AUCTION_INTERVAL=30s
-      - AUCTION_CHECK_INTERVAL=5s
-      - AUCTION_CONTEXT_TIMEOUT=10s
+      - BATCH_INSERT_INTERVAL=3s
+      - MAX_BATCH_SIZE=4
       - GIN_MODE=test
     command: sh -c "go test ./... -v -cover"
     networks:

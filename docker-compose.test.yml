@@ -29,8 +29,8 @@ services:
       - MONGODB_URL=mongodb://mongodb-test:27017
       - MONGODB_DB=test_auction_db
       - AUCTION_INTERVAL=30s
-      - AUCTION_CHECK_INTERVAL=5s
-      - AUCTION_CONTEXT_TIMEOUT=10s
+      - BATCH_INSERT_INTERVAL=3s
+      - MAX_BATCH_SIZE=4
       - GIN_MODE=test
     command: sh -c "go test ./... -v -cover"
     networks:
@@ -48,8 +48,8 @@ services:
       - MONGODB_URL=mongodb://mongodb-test:27017
       - MONGODB_DB=test_auction_db
       - AUCTION_INTERVAL=30s
-      - AUCTION_CHECK_INTERVAL=5s
-      - AUCTION_CONTEXT_TIMEOUT=10s
+      - BATCH_INSERT_INTERVAL=3s
+      - MAX_BATCH_SIZE=4
       - GIN_MODE=test
     command: sh -c "go test ./internal/infra/database/auction/ -v -cover"
     networks:
@@ -67,8 +67,8 @@ services:
       - MONGODB_URL=mongodb://mongodb-test:27017
       - MONGODB_DB=test_auction_db
       - AUCTION_INTERVAL=30s
-      - AUCTION_CHECK_INTERVAL=5s
-      - AUCTION_CONTEXT_TIMEOUT=10s
+      - BATCH_INSERT_INTERVAL=3s
+      - MAX_BATCH_SIZE=4
       - GIN_MODE=test
     command: sh -c "go test ./... -v -cover -tags=integration"
     networks:
@@ -86,8 +86,8 @@ services:
       - MONGODB_URL=mongodb://mongodb-test:27017
       - MONGODB_DB=test_auction_db
       - AUCTION_INTERVAL=2s
-      - AUCTION_CHECK_INTERVAL=1s
-      - AUCTION_CONTEXT_TIMEOUT=10s
+      - BATCH_INSERT_INTERVAL=1s
+      - MAX_BATCH_SIZE=4
       - GIN_MODE=test
     command: sh -c "go test ./internal/infra/database/auction/ -v -run TestAutoClose -cover"
     networks:
@@ -105,8 +105,8 @@ services:
       - MONGODB_URL=mongodb://mongodb-test:27017
       - MONGODB_DB=test_auction_db
       - AUCTION_INTERVAL=1s
-      - AUCTION_CHECK_INTERVAL=500ms
-      - AUCTION_CONTEXT_TIMEOUT=5s
+      - BATCH_INSERT_INTERVAL=500ms
+      - MAX_BATCH_SIZE=10
       - GIN_MODE=test
     command: sh -c "go test ./internal/infra/database/auction/ -v -run TestConcurrent -cover"
     networks:

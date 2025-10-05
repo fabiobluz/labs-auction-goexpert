@@ -25,39 +25,7 @@ go tool cover -html=coverage.out
 
 ### 2. Testes com Docker Compose
 
-#### Opção A: Scripts Automatizados
-
-**Windows PowerShell:**
-```powershell
-# Executar todos os testes
-.\scripts\test.ps1 all
-
-# Executar apenas testes do auction
-.\scripts\test.ps1 auction
-
-# Executar testes de integração
-.\scripts\test.ps1 integration
-
-# Limpar ambiente de teste
-.\scripts\test.ps1 clean
-```
-
-**Linux/Mac:**
-```bash
-# Executar todos os testes
-./scripts/test.sh all
-
-# Executar apenas testes do auction
-./scripts/test.sh auction
-
-# Executar testes de integração
-./scripts/test.sh integration
-
-# Limpar ambiente de teste
-./scripts/test.sh clean
-```
-
-#### Opção B: Makefile
+#### Opção A: Makefile
 
 ```bash
 # Ver todos os comandos disponíveis
@@ -76,7 +44,7 @@ make docker-test-integration
 make docker-clean
 ```
 
-#### Opção C: Comandos Docker Compose Diretos
+#### Opção B: Comandos Docker Compose Diretos
 
 ```bash
 # Executar todos os testes
@@ -116,8 +84,8 @@ docker-compose -f docker-compose.test.yml down -v --remove-orphans
 MONGODB_URI=mongodb://mongodb-test:27017
 MONGODB_DATABASE=test_auction_db
 AUCTION_INTERVAL=30s
-AUCTION_CHECK_INTERVAL=5s
-AUCTION_CONTEXT_TIMEOUT=10s
+BATCH_INSERT_INTERVAL=3s
+MAX_BATCH_SIZE=4
 GIN_MODE=test
 ```
 
@@ -192,8 +160,8 @@ docker-compose -f docker-compose.test.yml up mongodb-test
 
 ### Problema: Testes falhando por timeout
 ```bash
-# Solução: Aumentar timeout nos testes
-export AUCTION_CONTEXT_TIMEOUT=60s
+# Solução: Aumentar o intervalo do leilão nos testes
+export AUCTION_INTERVAL=60s
 ```
 
 ### Problema: Containers não param

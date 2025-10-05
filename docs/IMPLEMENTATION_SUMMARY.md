@@ -6,32 +6,36 @@
 - **Arquivo**: `internal/infra/database/auction/create_auction.go`
 - **Funções**: 
   - `getAuctionInterval()`: Lê `AUCTION_INTERVAL` (duração do leilão)
-  - `getCheckInterval()`: Lê `AUCTION_CHECK_INTERVAL` (intervalo de verificação)
-  - `getContextTimeout()`: Lê `AUCTION_CONTEXT_TIMEOUT` (timeout de contexto)
-- **Fallbacks**: 5 minutos, 10 segundos e 30 segundos respectivamente
+- **Fallback**: 5 minutos como padrão
+- **Arquivo**: `internal/usecase/bid_usecase/create_bid_usecase.go`
+- **Funções**:
+  - `getMaxBatchSizeInterval()`: Lê `BATCH_INSERT_INTERVAL` (intervalo para inserção em lote)
+  - `getMaxBatchSize()`: Lê `MAX_BATCH_SIZE` (tamanho máximo do lote)
+- **Fallbacks**: 3 minutos e 5 respectivamente
 
-### 2. Goroutine de Fechamento Automático
+### 2. Fechamento Automático com Timer
 - **Arquivo**: `internal/infra/database/auction/create_auction.go`
-- **Função**: `startAutoCloseRoutine()`
+- **Implementação**: Timer individual para cada leilão
 - **Funcionalidade**: 
-  - Executa no intervalo configurado por `AUCTION_CHECK_INTERVAL`
-  - Verifica leilões expirados
-  - Atualiza status para `Completed`
-  - Remove do mapa de controle
-  - Registra logs de fechamento
+  - Cada leilão tem seu próprio timer baseado em `AUCTION_INTERVAL`
+  - Após o tempo configurado, atualiza status para `Completed`
+  - Implementado com goroutine e `time.After()`
+  - Registra logs de erro se houver falha na atualização
 
-### 3. Controle de Concorrência
-- **Implementação**: Mutex para thread safety
-- **Estruturas**:
-  - `auctionEndTimeMap`: Mapa de controle de tempo de fim
-  - `auctionEndTimeMutex`: Mutex para proteção do mapa
-- **Integração**: Sincronizado com o sistema de bids existente
+### 3. Sistema de Inserção em Lote de Lances
+- **Arquivo**: `internal/usecase/bid_usecase/create_bid_usecase.go`
+- **Implementação**: Batch insert para otimizar performance
+- **Funcionalidade**:
+  - Canal para receber lances: `bidChannel`
+  - Acumula lances até atingir `MAX_BATCH_SIZE` ou `BATCH_INSERT_INTERVAL`
+  - Timer para inserção periódica mesmo com lote não cheio
+  - Goroutine dedicada para processar o batch
 
-### 4. Método de Atualização de Status
+### 4. Atualização Automática de Status
 - **Arquivo**: `internal/infra/database/auction/create_auction.go`
-- **Função**: `UpdateAuctionStatus()`
-- **Funcionalidade**: Atualiza status do leilão no MongoDB
-- **Interface**: Adicionado à `AuctionRepositoryInterface`
+- **Implementação**: Usa `Collection.UpdateOne()` direto no MongoDB
+- **Funcionalidade**: Atualiza status do leilão para `Completed` após o timer expirar
+- **Thread Safety**: Cada goroutine é independente, evitando race conditions
 
 ### 5. Testes Unitários
 - **Arquivo**: `internal/infra/database/auction/auction_test.go`
@@ -45,16 +49,13 @@
 - **Arquivo**: `docker-compose.yml`
 - **Variáveis de Ambiente**:
   - `AUCTION_INTERVAL=2m`
+  - `BATCH_INSERT_INTERVAL=3m`
+  - `MAX_BATCH_SIZE=5`
   - `MONGODB_URI=mongodb://mongodb:27017`
   - `MONGODB_DATABASE=auction_db`
   - `GIN_MODE=debug`
 
-### 7. Scripts de Teste
-- **PowerShell**: `test_auto_close.ps1`
-- **Bash**: `test_auto_close.sh`
-- **Funcionalidade**: Demonstração automatizada do fechamento
-
-### 8. Documentação
+### 7. Documentação
 - **README.md**: Documentação completa
 - **env.example**: Exemplo de configuração
 - **IMPLEMENTATION_SUMMARY.md**: Este resumo
@@ -69,31 +70,37 @@
    ar.auctionEndTimeMap[auctionId] = auction.Timestamp.Add(ar.auctionInterval)
    ```
 
-2. **Monitoramento Contínuo**:
+2. **Timer Individual**:
    ```go
-   // Goroutine verifica a cada 10 segundos
-   ticker := time.NewTicker(time.Second * 10)
+   // Goroutine com timer para cada leilão
+   go func() {
+       select {
+       case <-time.After(getAuctionInterval()):
+           // Fecha o leilão
+       }
+   }()
    ```
 
-3. **Verificação de Expiração**:
+3. **Fechamento Automático**:
    ```go
-   // Compara tempo atual com tempo de fim
-   if now.After(endTime) {
-       // Fecha o leilão
+   // Atualiza status no banco após o timer
+   update := bson.M{"$set": bson.M{"status": auction_entity.Completed}}
+   ar.Collection.UpdateOne(ctx, filter, update)
+   ```
+
+4. **Sistema de Batch Insert**:
+   ```go
+   // Acumula lances e insere em lote
+   if len(bidBatch) >= bu.maxBatchSize {
+       bu.BidRepository.CreateBid(ctx, bidBatch)
    }
-   ```
-
-4. **Fechamento Automático**:
-   ```go
-   // Atualiza status no banco
-   repo.UpdateAuctionStatus(ctx, auctionId, auction_entity.Completed)
    ```
 
 ### Integração com Sistema Existente
 
 - **Compatibilidade**: Mantém compatibilidade com sistema de bids
-- **Sincronização**: Usa o mesmo controle de tempo do sistema de bids
-- **Thread Safety**: Implementa mutex para evitar race conditions
+- **Performance**: Sistema de batch insert otimiza inserção de lances
+- **Thread Safety**: Goroutines independentes para cada leilão evitam race conditions
 - **Logging**: Integrado com sistema de logging existente
 
 ## 🚀 Como Executar
@@ -115,10 +122,6 @@ go run cmd/auction/main.go
 ```bash
 # Executar tudo
 docker-compose up --build
-
-# Testar fechamento automático
-./test_auto_close.ps1  # Windows PowerShell
-./test_auto_close.sh    # Linux/Mac
 ```
 
 ### Testes
@@ -160,8 +163,9 @@ curl http://localhost:8080/auction
 
 ### Melhorias Implementadas
 
-- **Performance**: Verificação otimizada com mapa em memória
-- **Confiabilidade**: Tratamento de erros e fallbacks
+- **Performance**: Sistema de batch insert para lances otimiza inserções no banco
+- **Eficiência**: Timer individual por leilão elimina verificação periódica global
+- **Confiabilidade**: Tratamento de erros e fallbacks para configurações
 - **Observabilidade**: Logs detalhados de operações
 - **Testabilidade**: Testes unitários e scripts de demonstração
 - **Configurabilidade**: Variáveis de ambiente flexíveis
